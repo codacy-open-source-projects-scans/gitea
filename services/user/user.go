@@ -188,7 +188,7 @@ func DeleteUser(ctx context.Context, u *user_model.User, purge bool) error {
 				break
 			}
 			for _, org := range orgs {
-				if err := models.RemoveOrgUser(ctx, org, u); err != nil {
+				if err := org_service.RemoveOrgUser(ctx, org, u); err != nil {
 					if organization.IsErrLastOrgOwner(err) {
 						err = org_service.DeleteOrganization(ctx, org, true)
 						if err != nil {
@@ -289,6 +289,7 @@ func DeleteInactiveUsers(ctx context.Context, olderThan time.Duration) error {
 		if err = DeleteUser(ctx, u, false); err != nil {
 			// Ignore inactive users that were ever active but then were set inactive by admin
 			if models.IsErrUserOwnRepos(err) || models.IsErrUserHasOrgs(err) || models.IsErrUserOwnPackages(err) {
+				log.Warn("Inactive user %q has repositories, organizations or packages, skipping deletion: %v", u.Name, err)
 				continue
 			}
 			select {
