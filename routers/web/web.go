@@ -227,6 +227,8 @@ func ctxDataSet(args ...any) func(ctx *context.Context) {
 	}
 }
 
+const RouterMockPointBeforeWebRoutes = "before-web-routes"
+
 // Routes returns all web routes
 func Routes() *web.Router {
 	routes := web.NewRouter()
@@ -285,7 +287,7 @@ func Routes() *web.Router {
 
 	webRoutes := web.NewRouter()
 	webRoutes.Use(mid...)
-	webRoutes.Group("", func() { registerWebRoutes(webRoutes) }, common.BlockExpensive(), common.QoS())
+	webRoutes.Group("", func() { registerWebRoutes(webRoutes) }, common.BlockExpensive(), common.QoS(), web.RouterMockPoint(RouterMockPointBeforeWebRoutes))
 	routes.Mount("", webRoutes)
 	return routes
 }
@@ -1184,7 +1186,6 @@ func registerWebRoutes(m *web.Router) {
 	m.Post("/{username}/{reponame}/markup", optSignIn, context.RepoAssignment, reqUnitsWithMarkdown, web.Bind(structs.MarkupOption{}), misc.Markup)
 
 	m.Group("/{username}/{reponame}", func() {
-		m.Get("/find/*", repo.FindFiles)
 		m.Group("/tree-list", func() {
 			m.Get("/branch/*", context.RepoRefByType(git.RefTypeBranch), repo.TreeList)
 			m.Get("/tag/*", context.RepoRefByType(git.RefTypeTag), repo.TreeList)

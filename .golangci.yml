@@ -10,6 +10,7 @@ linters:
     - dupl
     - errcheck
     - forbidigo
+    - gocheckcompilerdirectives
     - gocritic
     - govet
     - ineffassign
@@ -114,6 +115,10 @@ linters:
         - stringsbuilder
     perfsprint:
       concat-loop: false
+    govet:
+      enable:
+        - nilness
+        - unusedwrite
   exclusions:
     generated: lax
     presets:
