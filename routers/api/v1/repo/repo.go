@@ -151,7 +151,6 @@ func Search(ctx *context.APIContext) {
 		StarredByID:        ctx.FormInt64("starredBy"),
 		IncludeDescription: ctx.FormBool("includeDesc"),
 	}
-	opts.ApplyPublicOnly(ctx.PublicOnly)
 
 	if ctx.FormString("template") != "" {
 		opts.Template = optional.Some(ctx.FormBool("template"))
@@ -557,11 +556,6 @@ func GetByID(ctx *context.APIContext) {
 		}
 		return
 	}
-	if !ctx.TokenCanAccessRepo(repo) {
-		ctx.APIErrorNotFound()
-		return
-	}
-
 	permission, err := access_model.GetDoerRepoPermission(ctx, repo, ctx.Doer)
 	if err != nil {
 		ctx.APIErrorInternal(err)
@@ -717,7 +711,9 @@ func updateBasicProperties(ctx *context.APIContext, opts api.EditRepoOption) err
 
 	// Default branch only updated if changed and exist or the repository is empty
 	updateRepoLicense := false
+	oldDefaultBranch := ""
 	if opts.DefaultBranch != nil && repo.DefaultBranch != *opts.DefaultBranch && (repo.IsEmpty || git.IsBranchExist(ctx, ctx.Repo.Repository, *opts.DefaultBranch)) {
+		oldDefaultBranch = repo.DefaultBranch
 		repo.DefaultBranch = *opts.DefaultBranch
 		if !repo.IsEmpty {
 			if err := git.SetDefaultBranch(ctx, repo, repo.DefaultBranch); err != nil {
@@ -731,6 +727,10 @@ func updateBasicProperties(ctx *context.APIContext, opts api.EditRepoOption) err
 	if err := repo_service.UpdateRepository(ctx, repo, visibilityChanged); err != nil {
 		ctx.APIErrorInternal(err)
 		return err
+	}
+
+	if oldDefaultBranch != "" {
+		actions_service.SwitchSchedulesToDefaultBranch(ctx, repo, oldDefaultBranch)
 	}
 
 	if visibilityChanged {
@@ -1300,7 +1300,6 @@ func ListRepoActivityFeeds(ctx *context.APIContext) {
 		Date:           ctx.FormString("date"),
 		ListOptions:    listOptions,
 	}
-	opts.ApplyPublicOnly(ctx.PublicOnly)
 
 	feeds, count, err := feed_service.GetFeeds(ctx, opts)
 	if err != nil {
